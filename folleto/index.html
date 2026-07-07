@@ -68,6 +68,7 @@
     mask-image:radial-gradient(120% 120% at 50% 0%,#000 40%,transparent 100%);
   }
   .page > *{position:relative;z-index:1}
+  .pfit{display:flex;flex-direction:column;flex:1;min-height:0;width:100%}
 
   /* ---------- shared type ---------- */
   .eyebrow{
@@ -243,7 +244,7 @@
   }
 
   /* ---------- print ---------- */
-  @page{size:A4 landscape;margin:0}
+  @page{size:A4;margin:0}
   @media print{
     html{background:#fff}
     body{padding:0;gap:0;display:block}
@@ -255,6 +256,9 @@
       padding:12mm 14mm;
     }
     .page:last-of-type{page-break-after:auto}
+    .kpis{min-height:225px}
+    .kpi{min-height:180px}
+    .kpi .num{line-height:1.15}
     *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   }
 </style>
@@ -506,6 +510,38 @@
       if(p<1) requestAnimationFrame(step);
     }
     requestAnimationFrame(step);
+  });
+
+  // ---- shrink-to-fit each page when printing, so nothing gets clipped ----
+  function wrapPagesForPrint(){
+    document.querySelectorAll('.page').forEach(page=>{
+      if(page.querySelector(':scope > .pfit')) return;
+      const wrap=document.createElement('div');
+      wrap.className='pfit';
+      while(page.firstChild) wrap.appendChild(page.firstChild);
+      page.appendChild(wrap);
+    });
+  }
+  function fitPagesForPrint(){
+    wrapPagesForPrint();
+    document.querySelectorAll('.page').forEach(page=>{
+      const wrap=page.querySelector(':scope > .pfit');
+      if(!wrap) return;
+      wrap.style.transform='none';
+      wrap.style.width='100%';
+      const avail=page.clientHeight;
+      const needed=wrap.scrollHeight;
+      const scale=avail>0 && needed>0 ? Math.min(1, avail/needed) : 1;
+      if(scale<1){
+        wrap.style.transform=`scale(${scale})`;
+        wrap.style.transformOrigin='top left';
+        wrap.style.width=(100/scale)+'%';
+      }
+    });
+  }
+  window.addEventListener('beforeprint', fitPagesForPrint);
+  window.addEventListener('afterprint', ()=>{
+    document.querySelectorAll('.pfit').forEach(w=>{ w.style.transform='none'; w.style.width='100%'; });
   });
 </script>
 </body>
